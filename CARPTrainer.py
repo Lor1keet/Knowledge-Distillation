@@ -442,7 +442,7 @@ class CARPTrainer:
                     if batch_counter >= train_num_episode / batch_size:
                         os.makedirs(file_path, exist_ok=True)
 
-                                            # 定义分布类型
+                        # 定义分布类型
                         distributions = ['uniform', 'cluster', 'smallworld']
 
                         # 遍历每种分布类型
@@ -477,42 +477,41 @@ class CARPTrainer:
                             self.logger.info(f"{dist} 分布的实例成功保存")
 
             if epoch > 1 or (epoch == 1 and files_exist):                
-                # 加载
-                if class_type == 'uniform':
-                    self.logger.info("读取 uniform 实例")
-                    depot_features_all = torch.load(os.path.join(file_path, 'depot_features_uniform.txt'), map_location="cpu")
-                    customer_features_all = torch.load(os.path.join(file_path, 'customer_features_uniform.txt'), map_location="cpu")
-                    customer_demand_all = torch.load(os.path.join(file_path, 'customer_demand_uniform.txt'), map_location="cpu")
-                    graph_info_all = torch.load(os.path.join(file_path, 'graph_info_uniform.txt'), map_location="cpu")
-                    D_all = torch.load(os.path.join(file_path, 'D_uniform.txt'), map_location="cpu")
-                    A_all = torch.load(os.path.join(file_path, 'A_uniform.txt'), map_location="cpu")
-                elif class_type == 'cluster':
-                    self.logger.info("读取 cluster 实例")
-                    depot_features_all = torch.load(os.path.join(file_path, 'depot_features_cluster.txt'), map_location="cpu")
-                    customer_features_all = torch.load(os.path.join(file_path, 'customer_features_cluster.txt'), map_location="cpu")
-                    customer_demand_all = torch.load(os.path.join(file_path, 'customer_demand_cluster.txt'), map_location="cpu")
-                    graph_info_all = torch.load(os.path.join(file_path, 'graph_info_cluster.txt'), map_location="cpu")
-                    D_all = torch.load(os.path.join(file_path, 'D_cluster.txt'), map_location="cpu")
-                    A_all = torch.load(os.path.join(file_path, 'A_cluster.txt'), map_location="cpu")
-                elif class_type == 'smallworld':
-                    self.logger.info("读取 smallworld 实例")
-                    depot_features_all = torch.load(os.path.join(file_path, 'depot_features_smallworld.txt'), map_location="cpu")
-                    customer_features_all = torch.load(os.path.join(file_path, 'customer_features_smallworld.txt'), map_location="cpu")
-                    customer_demand_all = torch.load(os.path.join(file_path, 'customer_demand_smallworld.txt'), map_location="cpu")
-                    graph_info_all = torch.load(os.path.join(file_path, 'graph_info_smallworld.txt'), map_location="cpu")
-                    D_all = torch.load(os.path.join(file_path, 'D_smallworld.txt'), map_location="cpu")
-                    A_all = torch.load(os.path.join(file_path, 'A_smallworld.txt'), map_location="cpu")
+                # 检查是否需要重新加载数据
+                if not hasattr(self, 'cached_data') or self.cached_data.get('class_type') != class_type:
+                    self.cached_data = {'class_type': class_type}  # 记录当前分布类型
 
-                # 根据 batch_index 获取特定的批次数据
-                depot_features = depot_features_all[batch_index].to(self.device)
-                customer_features = customer_features_all[batch_index].to(self.device)
-                customer_demand = customer_demand_all[batch_index].to(self.device)
-                graph_info = graph_info_all[batch_index].to(self.device)
-                D = D_all[batch_index].to(self.device)
-                A = A_all[batch_index].to(self.device)
+                    if class_type == 'uniform':                   
+                        self.cached_data['depot_features'] = torch.load(os.path.join(file_path, 'depot_features_uniform.txt'))
+                        self.cached_data['customer_features'] = torch.load(os.path.join(file_path, 'customer_features_uniform.txt'))
+                        self.cached_data['customer_demand'] = torch.load(os.path.join(file_path, 'customer_demand_uniform.txt'))
+                        self.cached_data['graph_info'] = torch.load(os.path.join(file_path, 'graph_info_uniform.txt'))
+                        self.cached_data['D'] = torch.load(os.path.join(file_path, 'D_uniform.txt'))
+                        self.cached_data['A'] = torch.load(os.path.join(file_path, 'A_uniform.txt'))
+                    elif class_type == 'cluster':                   
+                        self.cached_data['depot_features'] = torch.load(os.path.join(file_path, 'depot_features_cluster.txt'))
+                        self.cached_data['customer_features'] = torch.load(os.path.join(file_path, 'customer_features_cluster.txt'))
+                        self.cached_data['customer_demand'] = torch.load(os.path.join(file_path, 'customer_demand_cluster.txt'))
+                        self.cached_data['graph_info'] = torch.load(os.path.join(file_path, 'graph_info_cluster.txt'))
+                        self.cached_data['D'] = torch.load(os.path.join(file_path, 'D_cluster.txt'))
+                        self.cached_data['A'] = torch.load(os.path.join(file_path, 'A_cluster.txt'))
+                    elif class_type == 'smallworld':                    
+                        self.cached_data['depot_features'] = torch.load(os.path.join(file_path, 'depot_features_smallworld.txt'))
+                        self.cached_data['customer_features'] = torch.load(os.path.join(file_path, 'customer_features_smallworld.txt'))
+                        self.cached_data['customer_demand'] = torch.load(os.path.join(file_path, 'customer_demand_smallworld.txt'))
+                        self.cached_data['graph_info'] = torch.load(os.path.join(file_path, 'graph_info_smallworld.txt'))
+                        self.cached_data['D'] = torch.load(os.path.join(file_path, 'D_smallworld.txt'))
+                        self.cached_data['A'] = torch.load(os.path.join(file_path, 'A_smallworld.txt'))
+
+                # 从缓存中提取数据
+                depot_features = self.cached_data['depot_features'][batch_index].to(self.device)
+                customer_features = self.cached_data['customer_features'][batch_index].to(self.device)
+                customer_demand = self.cached_data['customer_demand'][batch_index].to(self.device)
+                graph_info = self.cached_data['graph_info'][batch_index].to(self.device)
+                D = self.cached_data['D'][batch_index].to(self.device)
+                A = self.cached_data['A'][batch_index].to(self.device)
                 avg_score, avg_loss, RL_loss, KLD_loss = self._distill_one_batch(batch_size, distribution=class_type, use_saved_problems=True, saved_problems=[depot_features, customer_features, customer_demand, graph_info, D, A])
-                del depot_features, customer_features, customer_demand, graph_info, D, A
-                torch.cuda.empty_cache()
+
 
             # Update variables
             if distill_param['distill_distribution']:
@@ -528,14 +527,15 @@ class CARPTrainer:
 
             episode += batch_size
             batch_index += 1  # Move to the next saved problems
-
+           
+            
             if distill_param['distill_distribution']:
-                self.logger.info('Epoch {:3d}: Train {:3d}/{:3d}({:1.1f}%)  Score: {:.4f},  Loss: {:.4f},  RL_Loss: {:.4f},  KLD_Loss: {:.4f}'
+                print('Epoch {:3d}: Train {:3d}/{:3d}({:1.1f}%)  Score: {:.4f},  Loss: {:.4f},  RL_Loss: {:.4f},  KLD_Loss: {:.4f}'
                                     .format(epoch, episode, train_num_episode, 100. * episode / train_num_episode,
                                             locals()[class_type + '_score_AM'].avg, locals()[class_type + '_loss_AM'].avg,
                                             locals()[class_type + '_RL_loss_AM'].avg, locals()[class_type + '_KLD_loss_AM'].avg))
             else:
-                self.logger.info('Epoch {:3d}: Train {:3d}/{:3d}({:1.1f}%)  Score: {:.4f},  Loss: {:.4f},  RL_Loss: {:.4f},  KLD_Loss: {:.4f}'
+                print('Epoch {:3d}: Train {:3d}/{:3d}({:1.1f}%)  Score: {:.4f},  Loss: {:.4f},  RL_Loss: {:.4f},  KLD_Loss: {:.4f}'
                                     .format(epoch, episode, train_num_episode, 100. * episode / train_num_episode,
                                             score_AM.avg, loss_AM.avg, RL_loss_AM.avg, KLD_loss_AM.avg))
         
