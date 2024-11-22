@@ -285,6 +285,5 @@ class CARPEnv:
                                                          D[indices, node_1_front, node_2_behind] + f_2)
                 f_1 = f_1_
                 f_2 = f_2_
-        del graph_info, D
-        torch.cuda.empty_cache()        
+        del graph_info, D        
         return total_dhcost
