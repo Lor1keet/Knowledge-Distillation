@@ -13,8 +13,7 @@ class GraphConvolutionLayer(nn.Module):
         nn.init.xavier_uniform_(self.weight)  # 初始化权重
         nn.init.zeros_(self.bias)  # 初始化偏置
 
-    def forward(self, A, node_features):
-        # 确保 node_features 和 weight 在同一个设备上
+    def forward(self, A, node_features):        
         node_features = node_features.to(device)
         weight = self.weight.to(device)
         bias = self.bias.to(device)
