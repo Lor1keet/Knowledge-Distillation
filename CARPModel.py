@@ -77,7 +77,7 @@ class CARPModel(nn.Module):
                         # shape: (batch, pomo)
                         prob = None  # value not needed. Can be anything.    
                         
-            # 学生利用教师模型的路径
+            
             else:
                 selected = route[:, :,state.selected_count].reshape(batch_size, pomo_size).long()
                 prob = probs[state.BATCH_IDX, state.POMO_IDX, selected].reshape(batch_size, pomo_size)
@@ -115,21 +115,10 @@ class CARP_Encoder(nn.Module):
         self.layers = nn.ModuleList([EncoderLayer(**model_params) for _ in range(encoder_layer_num)])
 
     def forward(self, depot, customer, customer_demand, A):
-        
-        # 检查和调整 depot 的维度
-        if depot.dim() == 4:
-            depot = depot.squeeze(1)  # 将 (batch_size, 1, 1, num_features) 转换为 (batch_size, 1, num_features)
-
-        # 确保 depot 的形状为 (batch_size, 1, num_features)
-        if depot.dim() == 2:
-            depot = depot.unsqueeze(1)  # 如果是 2D 张量 (batch_size, num_features)，则添加维度
-
-        # 检查和调整 customer 的维度
-        if customer.dim() == 4:
-            customer = customer.squeeze(1)  # 将 (batch_size, 1, edge_size, num_features) 转换为 (batch_size, edge_size, num_features)
 
         # 将仓库节点与客户节点拼接
-        node_feature = torch.cat((depot, customer), dim=1)  # 拼接后的形状为 (batch_size, problem+1, num_features)
+        node_feature = torch.cat((depot[:,None,:], customer), dim=1)  # 拼接后的形状为 (batch_size, problem+1, num_features)
+
         # 通过GCN对节点特征进行编码
         out = self.gcn_model(A, node_feature)
 
