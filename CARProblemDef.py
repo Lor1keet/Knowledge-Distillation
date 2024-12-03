@@ -88,8 +88,6 @@ def get_random_carp_problems(batch_size, vertex_size, edge_size, device, distrib
         print("最大需求: ",max_demand)
         print("节点度范围: (%d,%d)"% (min_degree, max_degree))
 
-    
-
         name = "node" + str(vertex_size) + "edge" + str(edge_size) + "_" + "features"
         file_path = os.path.join("mapinfo", name)
         file_path = os.path.join(file_path, str(num_samples))
@@ -157,9 +155,6 @@ def get_random_carp_problems(batch_size, vertex_size, edge_size, device, distrib
                 # 对称归一化，用于 GCN
                 A = torch.matmul(torch.matmul(degree_inv_sqrt, adjacency_matrix), degree_inv_sqrt).float().to(device)
                 A_tensor[sample, :, :] = A
-
-
-
 
         graph_info_ori = graph_info_ori.permute(0, 2, 1)  # [num_samples ,4, edge_size + 1]
 
@@ -257,9 +252,8 @@ def edge2vertex(edge_graph, depot):
     return G
 
 def generate_graph_degree(vertex_size, edge_size, distribution, max_dhcost, max_demand, min_degree, max_degree):
-    errorNum = 0
-    
-     # 如果 distribution 的类型为 small_world，则生成小世界网络
+    errorNum = 0   
+    # 如果 distribution 的类型为 smallworld，则生成小世界网络
     if distribution['data_type'] == 'smallworld':
         k = distribution.get('k', 4)  # 每个节点连接的临近节点数
         p = distribution.get('p', 0.1)  # 重新连边的概率
