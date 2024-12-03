@@ -70,7 +70,7 @@ optimizer_params = {
         'weight_decay': 1e-6
     },
     'scheduler': {
-        'milestones': [11520, 23040, 34560],
+        'milestones': [201, 291],
         'gamma': 0.1
     }
 }
@@ -89,7 +89,7 @@ trainer_params = {
         'img_save_interval': 100,
         'log_image_params_1': {
             'json_foldername': 'log_image_style',
-            'filename': 'style_cvrp_{}_{}.json'.format(env_params['vertex_size'], env_params['distribution']['data_type'])
+            'filename': 'style_carp_{}_{}.json'.format(env_params['vertex_size'], env_params['distribution']['data_type'])
         },
         'log_image_params_2': {
             'json_foldername': 'log_image_style',
@@ -110,10 +110,10 @@ trainer_params = {
 if trainer_params['distillation']:
     trainer_params['student_model_param'] = {
         'normalization': 'instance',
-        'embedding_dim': 64,
-        'sqrt_embedding_dim': 64 ** (1 / 2),
+        'embedding_dim': 128,
+        'sqrt_embedding_dim': 128 ** (1 / 2),
         'encoder_layer_num': 6,
-        'qkv_dim': 8,
+        'qkv_dim': 16,
         'head_num': 8,
         'logit_clipping': 10,
         'ff_hidden_dim': 512,
