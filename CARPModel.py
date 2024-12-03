@@ -15,7 +15,7 @@ class CARPModel(nn.Module):
         # 存储编码器生成的节点或边的表示
         self.encoded_nodes = None
 
-    def pre_forward(self, reset_state, attn_type=None):
+    def pre_forward(self, reset_state, attn_type=None, ReturnInnerFeatures=False):
         # 仓库特征 (batch, 1, num_features)
         depot = reset_state.depot_features
         # 客户特征 (batch, problem, num_features)
@@ -28,8 +28,10 @@ class CARPModel(nn.Module):
         
         # 使用编码器将仓库、客户、客户需求和图的邻接矩阵编码为高维表示，存储在 self.encoded_nodes 中
         # 编码后的节点表示 (batch, problem+1, embedding_dim)
-        
-        self.encoded_nodes = self.encoder(depot, customer, customer_demand, A)
+        if ReturnInnerFeatures:
+            self.encoded_nodes, self.inner_features = self.encoder(depot, customer, customer_demand, A, ReturnInnerFeatures=True)
+        else:
+            self.encoded_nodes = self.encoder(depot, customer, customer_demand, A)
 
         # 将编码后的节点信息传递给解码器
         self.decoder.set_kv(self.encoded_nodes)
@@ -114,19 +116,25 @@ class CARP_Encoder(nn.Module):
         encoder_layer_num = model_params['encoder_layer_num']
         self.layers = nn.ModuleList([EncoderLayer(**model_params) for _ in range(encoder_layer_num)])
 
-    def forward(self, depot, customer, customer_demand, A):
+    def forward(self, depot, customer, customer_demand, A, ReturnInnerFeatures=False) :
 
         # 将仓库节点与客户节点拼接
         node_feature = torch.cat((depot[:,None,:], customer), dim=1)  # 拼接后的形状为 (batch_size, problem+1, num_features)
 
         # 通过GCN对节点特征进行编码
         out = self.gcn_model(A, node_feature)
+        inner_features=[out]
 
         # 多层编码器对GCN生成的节点嵌入进行进一步处理
         for layer in self.layers:
             out = layer(out)
-
-        return out  # 返回编码后的节点表示
+            if ReturnInnerFeatures:
+                inner_features.append(out)
+        
+        if ReturnInnerFeatures:
+            return out,inner_features
+        
+        return out  
 
 
 class EncoderLayer(nn.Module):

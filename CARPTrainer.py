@@ -2,9 +2,8 @@ import torch
 from torch import nn
 from logging import getLogger
 import random
-import ot
 import numpy as np
-
+import torch.nn.functional as F
 from CARPEnv import CARPEnv as Env
 from CARPModel import CARPModel as Model
 from CARPTester import validate
@@ -340,14 +339,15 @@ class CARPTrainer:
 
         # initialization
         if distill_param['distill_distribution']:
-            uniform_score_AM, uniform_loss_AM, uniform_RL_loss_AM, uniform_KLD_loss_AM = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
-            cluster_score_AM, cluster_loss_AM, cluster_RL_loss_AM, cluster_KLD_loss_AM = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
-            smallworld_score_AM, smallworld_loss_AM, smallworld_RL_loss_AM, smallworld_KLD_loss_AM = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
+            uniform_score_AM, uniform_loss_AM, uniform_RL_loss_AM, uniform_KLD_loss_AM, uniform_feature_loss_AM = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
+            cluster_score_AM, cluster_loss_AM, cluster_RL_loss_AM, cluster_KLD_loss_AM, cluster_feature_loss_AM = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
+            smallworld_score_AM, smallworld_loss_AM, smallworld_RL_loss_AM, smallworld_KLD_loss_AM, smallworld_feature_loss_AM = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
         else:
             score_AM = AverageMeter()
             loss_AM = AverageMeter()
             RL_loss_AM = AverageMeter()
             KLD_loss_AM = AverageMeter()
+            feature_loss_AM = AverageMeter()
 
         # load teacher model
         if distill_param['multi_teacher'] and distill_param['distill_distribution']:  # if use multiple teachers
@@ -495,7 +495,7 @@ class CARPTrainer:
                 graph_info = self.cached_data['graph_info'][batch_index].to(self.device)
                 D = self.cached_data['D'][batch_index].to(self.device)
                 A = self.cached_data['A'][batch_index].to(self.device)
-                avg_score, avg_loss, RL_loss, KLD_loss = self._distill_one_batch(batch_size, distribution=class_type, use_saved_problems=True, saved_problems=[depot_features, customer_features, customer_demand, graph_info, D, A])
+                avg_score, avg_loss, RL_loss, KLD_loss, feature_loss = self._distill_one_batch(batch_size, distribution=class_type, use_saved_problems=True, saved_problems=[depot_features, customer_features, customer_demand, graph_info, D, A])
 
             # upadate variables
             if distill_param['distill_distribution']:
@@ -503,12 +503,14 @@ class CARPTrainer:
                 locals()[class_type + '_loss_AM'].update(avg_loss, batch_size)
                 locals()[class_type + '_RL_loss_AM'].update(RL_loss, batch_size)
                 locals()[class_type + '_KLD_loss_AM'].update(KLD_loss, batch_size)
+                locals()[class_type + '_feature_loss_AM'].update(feature_loss, batch_size)
 
             else:
                 score_AM.update(avg_score, batch_size)
                 loss_AM.update(avg_loss, batch_size)
                 RL_loss_AM.update(RL_loss, batch_size)
                 KLD_loss_AM.update(KLD_loss, batch_size)
+                feature_loss.update(feature_loss, batch_size)
 
             episode += batch_size
             # update batch index
@@ -516,33 +518,34 @@ class CARPTrainer:
 
            # print information for every batch          
             if distill_param['distill_distribution']:
-                print('Epoch {:3d}: Train {:3d}/{:3d}({:1.1f}%)  Score: {:.4f},  Loss: {:.4f},  RL_Loss: {:.4f},  KLD_Loss: {:.4f}'
+                print('Epoch {:3d}: Train {:3d}/{:3d}({:1.1f}%)  Score: {:.4f},  Loss: {:.4f},  RL_Loss: {:.4f},  KLD_Loss: {:.4f},  feature_loss: {:.4f}'
                                     .format(epoch, episode, train_num_episode, 100. * episode / train_num_episode,
                                             locals()[class_type + '_score_AM'].avg, locals()[class_type + '_loss_AM'].avg,
-                                            locals()[class_type + '_RL_loss_AM'].avg, locals()[class_type + '_KLD_loss_AM'].avg))
+                                            locals()[class_type + '_RL_loss_AM'].avg, locals()[class_type + '_KLD_loss_AM'].avg, locals()[class_type + '_feature_loss_AM'].avg))
+
             else:
                 print('Epoch {:3d}: Train {:3d}/{:3d}({:1.1f}%)  Score: {:.4f},  Loss: {:.4f},  RL_Loss: {:.4f},  KLD_Loss: {:.4f}'
                                     .format(epoch, episode, train_num_episode, 100. * episode / train_num_episode,
-                                            score_AM.avg, loss_AM.avg, RL_loss_AM.avg, KLD_loss_AM.avg))        
+                                            score_AM.avg, loss_AM.avg, RL_loss_AM.avg, KLD_loss_AM.avg, feature_loss_AM))        
                 
         torch.cuda.empty_cache()
 
         # record log every epoch
         if distill_param['distill_distribution']:
-            self.logger.info('Epoch {:3d}: Train ({:3.0f}%)  Score: {:.4f},  Loss: {:.4f},  RL_Loss: {:.4f},  KLD_Loss: {:.4f}'
+            self.logger.info('Epoch {:3d}: Train ({:3.0f}%)  Score: {:.4f},  Loss: {:.4f},  RL_Loss: {:.4f},  KLD_Loss: {:.4f},  feature_loss: {:.4f}'
                             .format(epoch, 100. * episode / train_num_episode, locals()[class_type + '_score_AM'].avg,
-                                    locals()[class_type + '_loss_AM'].avg, locals()[class_type + '_RL_loss_AM'].avg, locals()[class_type + '_KLD_loss_AM'].avg))
+                                    locals()[class_type + '_loss_AM'].avg, locals()[class_type + '_RL_loss_AM'].avg, locals()[class_type + '_KLD_loss_AM'].avg), locals()[class_type + '_feature_loss_AM'].avg)
             torch.cuda.empty_cache()
-            return locals()[class_type + '_score_AM'].avg, locals()[class_type + '_loss_AM'].avg, locals()[class_type + '_RL_loss_AM'].avg, locals()[class_type + '_KLD_loss_AM'].avg, class_type
+            return locals()[class_type + '_score_AM'].avg, locals()[class_type + '_loss_AM'].avg, locals()[class_type + '_RL_loss_AM'].avg, locals()[class_type + '_KLD_loss_AM'].avg, locals()[class_type + '_feature_loss_AM'].avg, class_type
         
         else:
             self.logger.info('Epoch {:3d}: Train ({:3.0f}%)  Score: {:.4f},  Loss: {:.4f},  RL_Loss: {:.4f},  KLD_Loss: {:.4f}'
-                            .format(epoch, 100. * episode / train_num_episode, score_AM.avg, loss_AM.avg, RL_loss_AM.avg, KLD_loss_AM.avg))
+                            .format(epoch, 100. * episode / train_num_episode, score_AM.avg, loss_AM.avg, RL_loss_AM.avg, KLD_loss_AM.avg, feature_loss_AM))
             torch.cuda.empty_cache()
             
         if epoch == 1 and not self.is_problems_generated:
             self.is_problems_generated = True
-            return score_AM.avg, loss_AM.avg, RL_loss_AM.avg, KLD_loss_AM.avg
+            return score_AM.avg, loss_AM.avg, RL_loss_AM.avg, KLD_loss_AM.avg, feature_loss_AM
 
     def _distill_one_batch(self, batch_size, distribution=None, use_saved_problems=False, saved_problems=None):
         distill_param = self.trainer_params['distill_param']
@@ -649,7 +652,34 @@ class CARPTrainer:
                         teacher_probs_multi.append(teacher_probs)
 
             # use single teacher
-            else: 
+            else:
+                # 获取教师模型的中间特征
+                with torch.no_grad():
+                    teacher_reset_state, _, _ = self.env.reset()
+                    teacher_encoded_features, teacher_intermediate_features = self.model.encoder(
+                        teacher_reset_state.depot_features,
+                        teacher_reset_state.customer_features,
+                        teacher_reset_state.customer_demand,
+                        teacher_reset_state.A,
+                        ReturnInnerFeatures=True
+                    )
+
+                # 获取学生模型的中间特征
+                student_reset_state, _, _ = self.student_env.reset()
+                student_encoded_features, student_intermediate_features = self.student_model.encoder(
+                    student_reset_state.depot_features,
+                    student_reset_state.customer_features,
+                    student_reset_state.customer_demand,
+                    student_reset_state.A,
+                    ReturnInnerFeatures=True
+                )
+
+                # 计算中间特征蒸馏损失
+                feature_distill_loss = 0.0
+                for teacher_feature, student_feature in zip(teacher_intermediate_features, student_intermediate_features):
+                    feature_distill_loss += F.mse_loss(student_feature, teacher_feature)
+                feature_distill_loss /= len(teacher_intermediate_features)
+            
                 student_reset_state, _, _ = self.student_env.reset()               
                 self.student_model.pre_forward(student_reset_state, attn_type=None)  # No return!
                 student_prob_list = torch.zeros(size=(batch_size, self.env.pomo_size, 0))  # shape: (batch, pomo, 0~edge_size)
@@ -716,7 +746,7 @@ class CARPTrainer:
         else:
             soft_loss = nn.KLDivLoss()(student_probs.log(), teacher_probs) if not distill_param['KLD_student_to_teacher'] \
                 else nn.KLDivLoss()(teacher_probs.log(), student_probs)
-        loss = task_loss * distill_param['rl_alpha'] + soft_loss * distill_param['distill_alpha'] 
+        loss = task_loss * distill_param['rl_alpha'] + soft_loss * distill_param['distill_alpha'] + feature_distill_loss * 0.5
 
         # score
         max_pomo_reward, _ = student_reward.max(dim=1)  
@@ -727,7 +757,7 @@ class CARPTrainer:
         self.optimizer.step()
         torch.cuda.empty_cache()
 
-        return score_mean.item(), loss.item(), task_loss.item(), soft_loss.item()
+        return score_mean.item(), loss.item(), task_loss.item(), soft_loss.item(), feature_distill_loss.item()
     
 
 from torch.cuda.amp import autocast        
