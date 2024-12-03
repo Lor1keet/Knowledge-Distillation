@@ -34,22 +34,22 @@ env_params = {
     'edge_size': 100,
     'pomo_size': 100,
     'distribution': {
-        'data_type': 'uniform',  # cluster, smallworld, uniform
+        'data_type': 'smallworld',  # cluster, smallworld, uniform
         'n_cluster': 3,
         'n_cluster_mix': 1,
         'lower': 0.2,
         'upper': 0.8,
         'std': 0.07,
     },
-    'load_path': '../../../data/carp/carp_uniform50_10000.pkl',
+    'load_path': 'D:\CODE\CARP_Distillation_Final\data\carp\carp_smallworld50_10000.pkl',
     'load_raw': None
 }
-#
+
 model_params = {
-    'embedding_dim': 64,
-    'sqrt_embedding_dim': 64**(1/2),
+    'embedding_dim': 128,
+    'sqrt_embedding_dim': 128**(1/2),
     'encoder_layer_num': 6,
-    'qkv_dim': 8,
+    'qkv_dim': 16,
     'head_num': 8,
     'logit_clipping': 10,
     'ff_hidden_dim': 512,
@@ -63,11 +63,11 @@ tester_params = {
         "path": "pretrained/checkpoint-carp-{}.pt".format(env_params['vertex_size']), # directory path of pre-trained model and log files saved.
         'epoch': 'test',  # epoch version of pre-trained model to load.
     },
-    'test_episodes': 12800,
-    'test_batch_size': 128,
+    'test_episodes': 10000,
+    'test_batch_size': 100,
     'augmentation_enable': True,
     'aug_factor': 8,
-    'aug_batch_size': 128,
+    'aug_batch_size': 100,
     'test_data_load': {
         'enable': False,
         'filename': ''
