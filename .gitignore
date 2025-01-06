@@ -1,3 +1,7 @@
 teacher
 data
 log_image_style
+result
+log
+pretrained
+__pycache__

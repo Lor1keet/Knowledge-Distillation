@@ -65,9 +65,6 @@ tester_params = {
     },
     'test_episodes': 10000,
     'test_batch_size': 100,
-    'augmentation_enable': True,
-    'aug_factor': 8,
-    'aug_batch_size': 100,
     'test_data_load': {
         'enable': False,
         'filename': ''
@@ -75,10 +72,6 @@ tester_params = {
 }
 
 assert tester_params['test_episodes'] % tester_params['test_batch_size'] == 0, "Number of instances must be divisible by batch size!"
-assert tester_params['test_episodes'] % tester_params['aug_batch_size'] == 0, "Number of instances must be divisible by batch size!"
-
-if tester_params['augmentation_enable']:
-    tester_params['test_batch_size'] = tester_params['aug_batch_size']
 
 
 logger_params = {

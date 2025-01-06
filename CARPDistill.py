@@ -131,7 +131,6 @@ if trainer_params['distillation']:
         'meaningful_KLD': True,
         'adaptive_prob_type': 'softmax',  # 'sum'
         'start_adaptive_epoch': 1,
-        'aug_gap': True,
         'adaptive_interval': 1,
         'multi_teacher': False,
         'hinton_t2': False,
